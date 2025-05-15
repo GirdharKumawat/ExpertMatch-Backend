@@ -57,6 +57,8 @@ def Gemini_api_call(resume_text):
   """
 
   response = model.generate_content(prompt)
+  # [:-3]for removing the last 3 characters
+  # from the response text
   textresponse = response.text[response.text.index("{"):-3]
   json_response = json.loads(textresponse)
   return json_response 
@@ -108,7 +110,7 @@ def create_score_matches(user):
         expert_role = "expert"
 
         if user.role == candidate_role:
-            experts = User.objects.filter(role=expert_role)
+            experts = User.objects.filter(role=expert_role,)
             candidate_resume = UserInfo.objects.get(user=user).info
             print(f"Found {experts.count()} experts.")  # Debugging Line
 
@@ -157,53 +159,4 @@ def create_score_matches(user):
 
     except Exception as e:
         print(f"Error creating match scores: {e}")  # Debugging Line
-
-    try:
-        candidate_role = "candidate"
-        expert_role = "expert"
-
-        if  user.role == candidate_role:
-            experts = User.objects.filter(role=expert_role)
-            candidate_resume = UserInfo.objects.get(user=user).info
-
-            for expert in experts:
-                expert_resume = UserInfo.objects.get(user=expert).info
-
-                # Call AI function to calculate scores
-                scores = Gemini_AI_Agent(expert_resume, candidate_resume)  # Already a dict
-
-                if not ScoreMatchResult.objects.filter(candidate_id=candidate.id, expert_id=expert.id).exists():
-                  ScoreMatchResult.objects.create(
-                      candidate=user,
-                      expert=expert,
-                      education_score=scores.get("educationScore", 0.0),
-                      skills_score=scores.get("skillsScore", 0.0),
-                      experience_score=scores.get("experienceScore", 0.0),
-                      project_score=scores.get("projectScore", 0.0),
-                      total_score=scores.get("totalScore", 0.0)
-                  )
-
-        elif user.role == expert_role:
-            candidates = User.objects.filter(role=candidate_role)
-            expert_resume = UserInfo.objects.get(user=user).info
-
-            for candidate in candidates:
-                candidate_resume = UserInfo.objects.get(user=candidate).info
-
-                # Call AI function to calculate scores
-                scores = Gemini_AI_Agent(expert_resume, candidate_resume)  # Already a dict
-
-                # Save the result
-                if not ScoreMatchResult.objects.filter(candidate_id=candidate.id, expert_id=expert.id).exists():
-                  ScoreMatchResult.objects.create(
-                      candidate=candidate,
-                      expert=user,
-                      education_score=scores.get("educationScore", 0.0),
-                      skills_score=scores.get("skillsScore", 0.0),
-                      experience_score=scores.get("experienceScore", 0.0),
-                      project_score=scores.get("projectScore", 0.0),
-                      total_score=scores.get("totalScore", 0.0)
-                  )
-
-    except Exception as e:
-        print(f"Error creating match scores: {e}")
+        

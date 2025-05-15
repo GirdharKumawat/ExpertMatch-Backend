@@ -87,6 +87,9 @@ def addUser(request):
     
     info_entry = UserInfo.objects.create(user=user, info=extracted_text)
     
+    # calling function to create score matches
+    create_score_matches(user)
+    
     return Response({
         "message": "User added successfully",
         "user_id": user.id,
@@ -98,8 +101,9 @@ def addUser(request):
 def userinfo(request, id):
     user = get_object_or_404(User, id=id)
     user_info = get_object_or_404(UserInfo, user=user)
+#    use of ast ids to convert string representation of dictionary to actual dictionary
     data_dict = ast.literal_eval(user_info.info)
-   
+    
     return Response({
         "info_id": user_info.id,
         "extracted_text":data_dict
@@ -107,39 +111,32 @@ def userinfo(request, id):
 
 @api_view(['GET'])
 def scoreMatch(request, id):
-    try:
-        user = get_object_or_404(User, id=id)
-        print(f"API called for user: {user.name} ({user.role})")  # Debugging Line
+    candidate = get_object_or_404(User, id=id)
+    # this will fetch all score match results for the candidate
+    # and will return the list of scores
+    score_list = ScoreMatchResult.objects.filter(candidate=candidate) 
+    # now we will format the score_list to include names of candidate and expert
+    formatted_scores = [
+        {
+            "id": score.id,
+            "candidate_id": score.candidate_id,
+            "candidate_name": score.candidate.name,  # Adding Candidate Name
+            "expert_id": score.expert_id,
+            "expert_name": score.expert.name,  # Adding Expert Name
+            "education_score": score.education_score,
+            "skills_score": score.skills_score,
+            "experience_score": score.experience_score,
+            "project_score": score.project_score,
+            "total_score": score.total_score,
+            "created_at": score.created_at,
+        }
+        for score in score_list
+    ]
+    
+    # now print the formatted_scores
+    print(f"Formatted Scores: {formatted_scores}")  # Debugging Line
+    
+    
+    return Response({"scoreList": formatted_scores}, status=status.HTTP_200_OK)
         
-        create_score_matches(user)  # Ensure this function is only called once
-
-        # Fetch scores with related expert details
-        score_list = ScoreMatchResult.objects.filter(candidate=user).select_related('expert').values(
-            'id', 'candidate_id', 'expert_id', 'education_score', 'skills_score', 
-            'experience_score', 'project_score', 'total_score', 'created_at',
-            'candidate__name', 'expert__name'
-        )
-
-        # Modify the output to include names
-        formatted_scores = [
-            {
-                "id": item["id"],
-                "candidate_id": item["candidate_id"],
-                "candidate_name": item["candidate__name"],  # Adding Candidate Name
-                "expert_id": item["expert_id"],
-                "expert_name": item["expert__name"],  # Adding Expert Name
-                "education_score": item["education_score"],
-                "skills_score": item["skills_score"],
-                "experience_score": item["experience_score"],
-                "project_score": item["project_score"],
-                "total_score": item["total_score"],
-                "created_at": item["created_at"],
-            }
-            for item in score_list
-        ]
-
-        return JsonResponse({"status": "success", "message": "Scores calculated.", "scoreList": formatted_scores}, status=200)
-
-    except Exception as e:
-        print(f"API Error: {e}")  # Debugging Line
-        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    
